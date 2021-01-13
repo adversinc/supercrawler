@@ -198,6 +198,22 @@ describe("Crawler", function () {
         userAgent: "mybot/1.1"
       }).getUserAgent()).to.equal("mybot/1.1");
     });
+
+    it("will accept a function as a user agent", function () {
+      expect(new Crawler({
+        userAgent: () => "mybot/1.1"
+      }).getUserAgent()).to.equal("mybot/1.1");
+
+      expect(new Crawler({
+        userAgent: (url) => {
+          if (url === 'http://www.example.com/some/random/page') {
+            return 'url specific user agent';
+          }
+
+          return "mybot/1.1";
+        }
+      }).getUserAgent()).to.equal("mybot/1.1");
+    });
   });
 
   describe("#start", function () {
@@ -801,6 +817,44 @@ describe("Crawler", function () {
       }, 200);
     });
 
+    it("fires for a array content type", function (done) {
+      var crawler = new Crawler({
+        interval: 100
+      });
+
+      pageContentType = "text/html";
+      crawler.addHandler(["text/plain", "text/html"], handler);
+      crawler.start();
+
+      setTimeout(function () {
+        crawler.stop();
+        expect(handler.calledWith(sinon.match({
+          body: sinon.match(new Buffer("<html><body>test</body></html>")),
+          url: "https://example.com/index1.html"
+        }))).to.equal(true);
+        done();
+      }, 200);
+    });
+
+    it("can hold fire for a array content type", function (done) {
+      var crawler = new Crawler({
+        interval: 100
+      });
+
+      pageContentType = "text/xml";
+      crawler.addHandler(["text/plain", "text/html"], handler);
+      crawler.start();
+
+      setTimeout(function () {
+        crawler.stop();
+        expect(handler.calledWith(sinon.match({
+          body: sinon.match(new Buffer("<html><body>test</body></html>")),
+          url: "https://example.com/index1.html"
+        }))).to.equal(false);
+        done();
+      }, 200);
+    });
+
     it("can fire when content type determined from extension", function (done) {
       var crawler = new Crawler({
         interval: 100
@@ -979,7 +1033,7 @@ describe("Crawler", function () {
 
       setTimeout(function () {
         crawler.stop();
-        sinon.assert.calledWith(spy, "https://example.com/index1.html", "OTHER_ERROR", null);
+        sinon.assert.calledWith(spy, "https://example.com/index1.html", "OTHER_ERROR", null, "abitrary error");
         done();
       }, 200);
     });

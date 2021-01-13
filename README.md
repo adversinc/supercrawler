@@ -99,6 +99,9 @@ crawler.addHandler("text/html", supercrawler.handlers.htmlLinkParser({
   hostnames: ["example.com"]
 }));
 
+// Match an array of content-type
+crawler.addHandler(["text/plain", "text/html"], myCustomHandler);
+
 // Custom content handler for HTML pages.
 crawler.addHandler("text/html", function (context) {
   var sizeKb = Buffer.byteLength(context.body) / 1024;
@@ -131,7 +134,7 @@ crawler with the following options:
 | robotsEnabled | Indicates if the robots.txt is downloaded and checked. Defaults to `true`. |
 | robotsCacheTime | Number of milliseconds that robots.txt should be cached for. Defaults to 3600000 (1 hour). |
 | robotsIgnoreServerError | Indicates if `500` status code response for robots.txt should be ignored. Defaults to `false`. |
-| userAgent | User agent to use for requests. Defaults to `Mozilla/5.0 (compatible; supercrawler/1.0; +https://github.com/brendonboshell/supercrawler)` |
+| userAgent | User agent to use for requests. This can be either a string or a function that takes the URL being crawled. Defaults to `Mozilla/5.0 (compatible; supercrawler/1.0; +https://github.com/brendonboshell/supercrawler)`. |
 | request | Object of options to be passed to [request](https://github.com/request/request). Note that request does not support an asynchronous (and distributed) cookie jar. |
 
 Example usage:
@@ -154,14 +157,14 @@ The following methods are available:
 | start | Start crawling. |
 | stop | Stop crawling. |
 | addHandler(handler) | Add a handler for all content types. |
-| addHandler(contentType, handler) | Add a handler for a specific content type. |
+| addHandler(contentType, handler) | Add a handler for a specific content type. If `contentType` is a string, then (for example) 'text' will match 'text/html', 'text/plain', etc. If `contentType` is an array of strings, the page content type must match exactly. |
 
 The `Crawler` object fires the following events:
 
 | Event | Description |
 | --- | --- |
 | crawlurl(url) | Fires when crawling starts with a new URL. |
-| crawledurl(url, errorCode, statusCode) | Fires when crawling of a URL is complete. `errorCode` is `null` if no error occurred. `statusCode` is set if and only if the request was successful. |
+| crawledurl(url, errorCode, statusCode, errorMessage) | Fires when crawling of a URL is complete. `errorCode` is `null` if no error occurred. `statusCode` is set if and only if the request was successful. `errorMessage` is `null` if no error occurred. |
 | urllistempty | Fires when the URL list is (intermittently) empty. |
 | urllistcomplete | Fires when the URL list is permanently empty, barring URLs added by external sources. This only makes sense when running Supercrawler in non-distributed fashion. |
 
@@ -179,6 +182,8 @@ Options:
 | opts.db.username | Database username. |
 | opts.db.password | Database password. |
 | opts.db.sequelizeOpts | Options to pass to sequelize. |
+| opts.db.table | Table name to store URL queue. Default = 'url' |
+| opts.recrawlInMs | Number of milliseconds to recrawl a URL. Default = 31536000000 (1 year) |
 
 Example usage:
 
@@ -300,12 +305,21 @@ links.
 | Option | Description |
 | --- | --- |
 | hostnames | Array of hostnames that are allowed to be crawled. |
+| urlFilter(url, pageUrl) | Function that takes a URL and returns `true` if it should be included. |
 
 Example usage:
 
 ```js
 var hlp = supercrawler.handlers.htmlLinkParser({
   hostnames: ["example.com"]
+});
+```
+
+```js
+var hlp = supercrawler.handlers.htmlLinkParser({
+  urlFilter: function (url) {
+    return url.indexOf("page1") === -1;
+  }
 });
 ```
 
@@ -342,7 +356,7 @@ specification.
 
 | Option | Description |
 | --- | --- |
-| urlFilter | Function that takes a URL and returns `true` if it should be included. |
+| urlFilter | Function that takes a URL (including sitemap entries) and returns `true` if it should be included. |
 
 Example usage:
 
@@ -352,6 +366,30 @@ crawler.addHandler(supercrawler.handlers.sitemapsParser());
 ```
 
 ## Changelog
+
+### 2.0.0
+
+* [Added] `crawledurl` event to contain the error message, thanks [hjr3](https://github.com/hjr3).
+* [Changed] `sitemapsParser` to apply `urlFilter` on the sitemaps entries, thanks [hjr3](https://github.com/hjr3).
+* [Added] `Crawler` to take `userAgent` option as a function, thanks [hjr3](https://github.com/hjr3).
+
+### 1.7.2
+
+* [Fixed] Update DbUrlList to use symbol operators, thanks [hjr3](https://github.com/hjr3).
+
+### 1.7.1
+
+* [Changed] Updated dependencies, thanks [MrRefactoring](https://github.com/MrRefactoring/supercrawler).
+
+### 1.7.0
+
+* [Changed] `Crawler#addHandler` can now take an array of content-type to match, thanks [taina0407](https://github.com/taina0407).
+
+### 1.6.0
+
+* [Added] Added `opts.db.table` option to `DbUrlList` ([adversinc](https://github.com/adversinc)).
+* [Added] Added `recrawlInMs` option to `DbUrlList` ([adversinc](https://github.com/adversinc)).
+* [Added] Added the `urlFilter` option to `htmlLinkParser` ([adversinc](https://github.com/adversinc)).
 
 ### 1.5.0
 
